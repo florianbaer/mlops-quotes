@@ -1,0 +1,23 @@
+[project]
+name = "quotes-service"
+version = "0.1.0"
+description = "Guesses the author of a quote - the course project of the MLOps lecture"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.141",
+    "joblib>=1.5",
+    "pandas>=3.0",
+    "scikit-learn>=1.8",
+    "uvicorn[standard]>=0.52",
+]
+
+# MLflow is a training-time tool: it is in the dev group so `uv run train.py`
+# has it locally, while `uv sync --no-dev` in the Dockerfile leaves it (and its
+# SQLAlchemy/Flask stack) out of the image.
+[dependency-groups]
+dev = [
+    "httpx>=0.28",
+    "mlflow>=3.6",
+    "pip>=26.2.1",     # MLflow records the pip version in a logged model; without it, it warns
+    "pytest>=9",
+]

@@ -1,0 +1,13 @@
+# Keep the build context small and secret-free. The dependency layer is keyed on
+# pyproject.toml + uv.lock only, so nothing here can invalidate it by accident.
+.git
+.venv
+__pycache__
+*.pyc
+mlruns
+model.joblib
+test_app.py
+README.md
+mlflow.db
+.pytest_cache
+.github

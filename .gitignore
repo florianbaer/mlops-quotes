@@ -1,0 +1,7 @@
+mlruns/
+model.joblib
+.venv/
+__pycache__/
+mlflow.db
+.pytest_cache/
+.DS_Store

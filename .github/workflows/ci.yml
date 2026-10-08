@@ -1,0 +1,61 @@
+# Every push is tested by a machine that is not yours; every push to main that
+# passes is built and published as a container image:
+#
+#   ghcr.io/<owner>/mlops-quotes:v1 and :v2   (same source, APP_VERSION differs -
+#                                              two tags to roll between)
+#
+# The image is public because this repository is: a package created by a workflow
+# with GITHUB_TOKEN inherits the visibility of the repository that publishes it.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # setup-uv publishes no moving major tag after v7 - pin the full release
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+      # --locked fails the build when uv.lock and pyproject.toml disagree -
+      # the same guarantee as in the Dockerfile
+      - run: uv sync --locked
+      - name: Train the model the tests load
+        run: uv run train.py --no-mlflow --export model.joblib
+      - run: uv run pytest -q
+
+  publish:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write            # required to push to ghcr.io
+    strategy:
+      matrix:
+        version: [v1, v2]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4   # needed for the gha cache
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: APP_VERSION=${{ matrix.version }}
+          tags: ghcr.io/${{ github.repository }}:${{ matrix.version }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
